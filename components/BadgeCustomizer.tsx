@@ -3,7 +3,7 @@
 import { BadgeOptions, BadgeStyle, BadgeShape, BadgeAnimation } from '@/lib/renderer/types';
 import { ICONS } from '@/lib/renderer/icons';
 import { renderBadge } from '@/lib/renderer/svg-engine';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef } from 'react';
 
 interface Props {
   options: BadgeOptions;
@@ -59,10 +59,73 @@ type TabId = 'content' | 'theme' | 'icon' | 'effects';
 
 export default function BadgeCustomizer({ options, onChange }: Props) {
   const [tab, setTab] = useState<TabId>('content');
+  const [iconMode, setIconMode] = useState<'presets' | 'upload' | 'url'>(
+    options.icon?.startsWith('data:') ? 'upload' : options.icon?.startsWith('http') ? 'url' : 'presets'
+  );
   const [iconSearch, setIconSearch] = useState('');
+  const [uploadedFileName, setUploadedFileName] = useState('');
+  const [urlInput, setUrlInput] = useState(options.icon?.startsWith('http') ? options.icon : '');
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const set = <K extends keyof BadgeOptions>(key: K, value: BadgeOptions[K]) =>
     onChange({ ...options, [key]: value });
+
+  const processUploadedFile = (file: File) => {
+    const isSvg = file.type === 'image/svg+xml' || file.name.toLowerCase().endsWith('.svg');
+    const reader = new FileReader();
+
+    if (isSvg) {
+      reader.onload = (event) => {
+        const result = event.target?.result as string;
+        set('icon', result);
+        setUploadedFileName(file.name);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      // PNG, JPG, WebP, etc.
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          // Normalize to max 128x128 canvas to keep data URL compact & sharp
+          const canvas = document.createElement('canvas');
+          const maxDim = 128;
+          let w = img.width;
+          let h = img.height;
+          if (w > maxDim || h > maxDim) {
+            if (w > h) {
+              h = Math.round((h * maxDim) / w);
+              w = maxDim;
+            } else {
+              w = Math.round((w * maxDim) / h);
+              h = maxDim;
+            }
+          }
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, w, h);
+          const dataUrl = canvas.toDataURL('image/png');
+          set('icon', dataUrl);
+          setUploadedFileName(file.name);
+        };
+        img.src = event.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) processUploadedFile(file);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) processUploadedFile(file);
+  };
 
   const filteredIcons = useMemo(() => {
     const entries = Object.entries(ICONS);
@@ -330,70 +393,195 @@ export default function BadgeCustomizer({ options, onChange }: Props) {
         {/* ── ICON TAB ── */}
         {tab === 'icon' && (
           <>
-            <div className="field">
-              <label className="label" htmlFor="input-icon-search">Search Icons</label>
-              <input
-                id="input-icon-search"
-                className="input"
-                type="text"
-                value={iconSearch}
-                onChange={e => setIconSearch(e.target.value)}
-                placeholder="typescript, react, docker..."
-              />
-            </div>
-
-            <div className="icon-grid">
+            {/* Icon Source Sub-tabs */}
+            <div className="icon-subtabs">
               <button
-                className={`icon-btn${!options.icon ? ' selected' : ''}`}
-                onClick={() => set('icon', undefined)}
-                id="icon-btn-none"
-                aria-pressed={!options.icon}
-                title="No icon"
+                className={`icon-subtab${iconMode === 'presets' ? ' active' : ''}`}
+                onClick={() => setIconMode('presets')}
+                id="icon-subtab-presets"
               >
-                <span style={{ fontSize: '14px', opacity: 0.5 }}>∅</span>
-                <span>None</span>
+                Presets (40+)
               </button>
-              {filteredIcons.map(([name, iconData]) => (
-                <button
-                  key={name}
-                  className={`icon-btn${options.icon === name ? ' selected' : ''}`}
-                  onClick={() => set('icon', name)}
-                  id={`icon-btn-${name}`}
-                  aria-pressed={options.icon === name}
-                  title={name}
-                >
-                  <svg viewBox={iconData.viewBox || '0 0 24 24'} width="16" height="16">
-                    <path d={iconData.path} fill="currentColor" />
-                  </svg>
-                  <span>{name}</span>
-                </button>
-              ))}
+              <button
+                className={`icon-subtab${iconMode === 'upload' ? ' active' : ''}`}
+                onClick={() => setIconMode('upload')}
+                id="icon-subtab-upload"
+              >
+                Upload Logo
+              </button>
+              <button
+                className={`icon-subtab${iconMode === 'url' ? ' active' : ''}`}
+                onClick={() => setIconMode('url')}
+                id="icon-subtab-url"
+              >
+                Image URL
+              </button>
             </div>
 
-            {options.icon && (
+            {/* PRESETS SUB-TAB */}
+            {iconMode === 'presets' && (
               <>
-                <div>
-                  <span className="section-label">Icon Color</span>
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '8px' }}>
-                    <input
-                      type="color"
-                      className="color-input"
-                      value={options.iconColor?.startsWith('#') ? options.iconColor : '#ffffff'}
-                      onChange={e => set('iconColor', e.target.value)}
-                      id="color-icon"
-                      title="Icon color"
-                    />
-                    <input
-                      id="input-icon-color"
-                      className="input input-mono"
-                      style={{ flex: 1 }}
-                      type="text"
-                      value={options.iconColor ?? ''}
-                      onChange={e => set('iconColor', e.target.value)}
-                      placeholder="#ffffff"
-                    />
+                <div className="field">
+                  <label className="label" htmlFor="input-icon-search">Search Icons</label>
+                  <input
+                    id="input-icon-search"
+                    className="input"
+                    type="text"
+                    value={iconSearch}
+                    onChange={e => setIconSearch(e.target.value)}
+                    placeholder="typescript, react, docker, github..."
+                  />
+                </div>
+
+                <div className="icon-grid">
+                  <button
+                    className={`icon-btn${!options.icon ? ' selected' : ''}`}
+                    onClick={() => { set('icon', undefined); setUploadedFileName(''); }}
+                    id="icon-btn-none"
+                    aria-pressed={!options.icon}
+                    title="No icon"
+                  >
+                    <span style={{ fontSize: '14px', opacity: 0.5 }}>∅</span>
+                    <span>None</span>
+                  </button>
+                  {filteredIcons.map(([name, iconData]) => (
+                    <button
+                      key={name}
+                      className={`icon-btn${options.icon === name ? ' selected' : ''}`}
+                      onClick={() => { set('icon', name); setUploadedFileName(''); }}
+                      id={`icon-btn-${name}`}
+                      aria-pressed={options.icon === name}
+                      title={name}
+                    >
+                      <svg viewBox={iconData.viewBox || '0 0 24 24'} width="16" height="16">
+                        <path d={iconData.path} fill="currentColor" />
+                      </svg>
+                      <span>{name}</span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* UPLOAD SUB-TAB (PNG / SVG) */}
+            {iconMode === 'upload' && (
+              <div>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileUpload}
+                  accept="image/png,image/svg+xml,image/jpeg,image/webp,image/x-icon,.svg,.png,.jpg,.jpeg,.webp,.ico"
+                  style={{ display: 'none' }}
+                  id="logo-file-input"
+                />
+
+                <div
+                  className={`upload-dropzone${isDragging ? ' dragover' : ''}`}
+                  onClick={() => fileInputRef.current?.click()}
+                  onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
+                  onDragLeave={() => setIsDragging(false)}
+                  onDrop={handleDrop}
+                  id="logo-upload-dropzone"
+                >
+                  <div className="upload-icon-circle">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      Click to upload or drag & drop
+                    </div>
+                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', marginTop: '2px' }}>
+                      PNG, SVG, JPG, WebP (auto-optimized)
+                    </div>
                   </div>
                 </div>
+
+                {options.icon && options.icon.startsWith('data:') && (
+                  <div className="uploaded-logo-card">
+                    <div className="uploaded-logo-thumb">
+                      <img src={options.icon} alt="Custom logo" />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className="truncate" style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--text-primary)' }}>
+                        {uploadedFileName || 'Custom Logo'}
+                      </div>
+                      <div style={{ fontSize: '10px', color: '#4ade80', marginTop: '1px' }}>
+                        ✓ Embedded into SVG
+                      </div>
+                    </div>
+                    <button
+                      className="btn btn-ghost btn-xs"
+                      onClick={() => { set('icon', undefined); setUploadedFileName(''); }}
+                      style={{ color: '#ef4444' }}
+                      title="Remove uploaded logo"
+                    >
+                      ✕ Remove
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* URL SUB-TAB */}
+            {iconMode === 'url' && (
+              <div className="field">
+                <label className="label" htmlFor="input-logo-url">Logo Image URL</label>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <input
+                    id="input-logo-url"
+                    className="input input-mono"
+                    type="url"
+                    value={urlInput}
+                    onChange={e => {
+                      setUrlInput(e.target.value);
+                      set('icon', e.target.value.trim() || undefined);
+                    }}
+                    placeholder="https://example.com/logo.png"
+                  />
+                  {urlInput && (
+                    <button
+                      className="btn btn-secondary btn-xs"
+                      onClick={() => { setUrlInput(''); set('icon', undefined); }}
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                <span style={{ fontSize: '10px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
+                  Paste direct link to any PNG/SVG/HTTPS image
+                </span>
+              </div>
+            )}
+
+            {/* COMMON ICON CONTROLS (Position, Size, Color) */}
+            {options.icon && (
+              <>
+                {!options.icon.startsWith('data:') && !options.icon.startsWith('http') && (
+                  <div>
+                    <span className="section-label">Icon Color</span>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '8px' }}>
+                      <input
+                        type="color"
+                        className="color-input"
+                        value={options.iconColor?.startsWith('#') ? options.iconColor : '#ffffff'}
+                        onChange={e => set('iconColor', e.target.value)}
+                        id="color-icon"
+                        title="Icon color"
+                      />
+                      <input
+                        id="input-icon-color"
+                        className="input input-mono"
+                        style={{ flex: 1 }}
+                        type="text"
+                        value={options.iconColor ?? ''}
+                        onChange={e => set('iconColor', e.target.value)}
+                        placeholder="#ffffff"
+                      />
+                    </div>
+                  </div>
+                )}
 
                 <div className="field">
                   <label className="label" htmlFor="select-icon-pos">Icon Position</label>
@@ -416,7 +604,7 @@ export default function BadgeCustomizer({ options, onChange }: Props) {
                       type="range"
                       className="range"
                       min={8}
-                      max={24}
+                      max={32}
                       value={options.iconWidth ?? 14}
                       onChange={e => set('iconWidth', Number(e.target.value))}
                       style={{ flex: 1 }}

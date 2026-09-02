@@ -40,10 +40,15 @@ export function renderBadge(options: BadgeOptions): RenderedBadgeResult {
   const gap = 4;
   const letterSpacing = options.letterSpacing || 0;
 
-  // Icon handling
-  const iconData = getIcon(options.icon);
-  const iconWidth = iconData ? (options.iconWidth || 14) : 0;
-  const iconMargin = iconData ? 4 : 0;
+  // Icon handling (Built-in SVG or Custom Uploaded PNG / SVG Data URI or Image URL)
+  const rawIcon = options.icon ? options.icon.trim() : '';
+  const isDataUriOrUrl = rawIcon.startsWith('data:image/') || rawIcon.startsWith('http://') || rawIcon.startsWith('https://');
+  const isInlineSvg = rawIcon.startsWith('<svg') || rawIcon.startsWith('<?xml');
+  const iconData = (!isDataUriOrUrl && !isInlineSvg) ? getIcon(rawIcon) : null;
+  const hasIcon = Boolean(isDataUriOrUrl || isInlineSvg || iconData);
+
+  const iconWidth = hasIcon ? (options.iconWidth || 14) : 0;
+  const iconMargin = hasIcon ? 4 : 0;
 
   // Measure text accurately
   const labelTextWidth = hasLabel ? calculateTextWidth(rawLabel, fontSize, letterSpacing) : 0;
@@ -52,13 +57,13 @@ export function renderBadge(options: BadgeOptions): RenderedBadgeResult {
   // Compute widths
   let labelWidth = 0;
   if (hasLabel) {
-    labelWidth = paddingX + (iconData && options.iconPosition !== 'right' ? iconWidth + iconMargin : 0) + labelTextWidth + paddingX;
-  } else if (iconData && options.iconPosition !== 'right') {
+    labelWidth = paddingX + (hasIcon && options.iconPosition !== 'right' ? iconWidth + iconMargin : 0) + labelTextWidth + paddingX;
+  } else if (hasIcon && options.iconPosition !== 'right') {
     labelWidth = paddingX + iconWidth + iconMargin;
   }
 
   let messageWidth = paddingX + messageTextWidth + paddingX;
-  if (iconData && options.iconPosition === 'right') {
+  if (hasIcon && options.iconPosition === 'right') {
     messageWidth += iconMargin + iconWidth;
   }
 
@@ -253,12 +258,19 @@ export function renderBadge(options: BadgeOptions): RenderedBadgeResult {
   svg += `<g fill="#fff" text-anchor="start" font-family="${fontFamily}" font-size="${fontSize}" font-weight="600" text-rendering="geometricPrecision">`;
 
   // Render Icon
-  if (iconData) {
+  if (hasIcon) {
     const iX = options.iconPosition === 'right' ? totalWidth - paddingX - iconWidth : iconX;
     svg += `<g transform="translate(${iX}, ${iconY})">`;
-    svg += `<svg viewBox="${iconData.viewBox || '0 0 24 24'}" width="${iconWidth}" height="${iconWidth}">`;
-    svg += `<path d="${iconData.path}" fill="${iconColor}" />`;
-    svg += `</svg>`;
+    if (isDataUriOrUrl) {
+      svg += `<image href="${rawIcon}" xlink:href="${rawIcon}" width="${iconWidth}" height="${iconWidth}" preserveAspectRatio="xMidYMid meet" />`;
+    } else if (isInlineSvg) {
+      const cleanedSvg = rawIcon.replace(/<\?xml.*?\?>/gi, '').trim();
+      svg += `<svg width="${iconWidth}" height="${iconWidth}" viewBox="0 0 24 24" preserveAspectRatio="xMidYMid meet">${cleanedSvg.replace(/<svg[^>]*>|<\/svg>/gi, '')}</svg>`;
+    } else if (iconData) {
+      svg += `<svg viewBox="${iconData.viewBox || '0 0 24 24'}" width="${iconWidth}" height="${iconWidth}">`;
+      svg += `<path d="${iconData.path}" fill="${iconColor}" />`;
+      svg += `</svg>`;
+    }
     svg += `</g>`;
   }
 
