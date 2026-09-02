@@ -85,13 +85,14 @@ export function renderBadge(options: BadgeOptions): RenderedBadgeResult {
   const textY = Math.round(height / 2 + fontSize / 3.2);
   const iconY = Math.round((height - iconWidth) / 2);
 
-  let iconX = paddingX;
-  let labelTextX = paddingX;
-  if (iconData && options.iconPosition !== 'right') {
-    labelTextX = paddingX + iconWidth + iconMargin;
-  }
+  const iconX = options.iconPosition === 'right' ? totalWidth - paddingX - iconWidth : paddingX;
+  const labelTextX = (hasIcon && options.iconPosition !== 'right')
+    ? paddingX + iconWidth + iconMargin
+    : paddingX;
 
-  const messageTextX = labelWidth + paddingX;
+  const messageTextX = hasLabel
+    ? labelWidth + paddingX
+    : (hasIcon && options.iconPosition !== 'right' ? paddingX + iconWidth + iconMargin : paddingX);
 
   // Shapes & Paths
   const badgePath = getShapePath(shape, totalWidth, height, cornerRadius);
