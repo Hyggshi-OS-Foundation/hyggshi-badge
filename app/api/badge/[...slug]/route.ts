@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { renderBadge } from '@/lib/renderer/svg-engine';
 import { parseBadgeQuery, createSvgResponse } from '@/lib/renderer/query-parser';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 export async function GET(
   request: NextRequest,
@@ -13,7 +13,8 @@ export async function GET(
     const slug = resolvedParams.slug.join('/');
     // Remove trailing .svg extension if present
     const cleanSlug = slug.replace(/\.svg$/i, '');
-    const { searchParams } = new URL(request.url);
+    const url = new URL(request.url);
+    const { searchParams } = url;
     const queryOptions = parseBadgeQuery(searchParams);
 
     // Parse slug parts: label-message-color or message-color
@@ -39,6 +40,7 @@ export async function GET(
       label: label ?? queryOptions.label,
       message: message || 'badge',
       color: color || queryOptions.color,
+      _iconBaseUrl: `${url.protocol}//${url.host}`,
     };
 
     const result = renderBadge(options);

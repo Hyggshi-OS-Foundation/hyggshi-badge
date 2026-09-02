@@ -3,7 +3,7 @@
 import { BadgeOptions, BadgeStyle, BadgeShape, BadgeAnimation } from '@/lib/renderer/types';
 import { ICONS } from '@/lib/renderer/icons';
 import { renderBadge } from '@/lib/renderer/svg-engine';
-import { useMemo, useState, useRef } from 'react';
+import { useMemo, useState, useRef, useCallback } from 'react';
 
 interface Props {
   options: BadgeOptions;
@@ -60,10 +60,19 @@ type TabId = 'content' | 'theme' | 'icon' | 'effects';
 export default function BadgeCustomizer({ options, onChange }: Props) {
   const [tab, setTab] = useState<TabId>('content');
   const [iconMode, setIconMode] = useState<'presets' | 'upload' | 'url'>(
-    options.icon?.startsWith('data:') ? 'upload' : options.icon?.startsWith('http') ? 'url' : 'presets'
+    options.icon?.startsWith('ico_') || options.icon?.startsWith('data:')
+      ? 'upload'
+      : options.icon?.startsWith('http')
+      ? 'url'
+      : 'presets'
   );
   const [iconSearch, setIconSearch] = useState('');
   const [uploadedFileName, setUploadedFileName] = useState('');
+  const [uploadedShortId, setUploadedShortId] = useState<string | null>(
+    options.icon?.startsWith('ico_') ? options.icon : null
+  );
+  const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'done' | 'error'>('idle');
+  const [uploadError, setUploadError] = useState('');
   const [urlInput, setUrlInput] = useState(options.icon?.startsWith('http') ? options.icon : '');
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -71,53 +80,35 @@ export default function BadgeCustomizer({ options, onChange }: Props) {
   const set = <K extends keyof BadgeOptions>(key: K, value: BadgeOptions[K]) =>
     onChange({ ...options, [key]: value });
 
-  const processUploadedFile = (file: File) => {
-    const isSvg = file.type === 'image/svg+xml' || file.name.toLowerCase().endsWith('.svg');
-    const reader = new FileReader();
-
-    if (isSvg) {
-      reader.onload = (event) => {
-        const result = event.target?.result as string;
-        set('icon', result);
-        setUploadedFileName(file.name);
-      };
-      reader.readAsDataURL(file);
-    } else {
-      // PNG, JPG, WebP, etc.
-      reader.onload = (event) => {
-        const img = new Image();
-        img.onload = () => {
-          // Normalize to max 128x128 canvas to keep data URL compact & sharp
-          const canvas = document.createElement('canvas');
-          const maxDim = 128;
-          let w = img.width;
-          let h = img.height;
-          if (w > maxDim || h > maxDim) {
-            if (w > h) {
-              h = Math.round((h * maxDim) / w);
-              w = maxDim;
-            } else {
-              w = Math.round((w * maxDim) / h);
-              h = maxDim;
-            }
-          }
-          canvas.width = w;
-          canvas.height = h;
-          const ctx = canvas.getContext('2d');
-          ctx?.drawImage(img, 0, 0, w, h);
-          const dataUrl = canvas.toDataURL('image/png');
-          set('icon', dataUrl);
-          setUploadedFileName(file.name);
-        };
-        img.src = event.target?.result as string;
-      };
-      reader.readAsDataURL(file);
+  const uploadFileToServer = useCallback(async (file: File) => {
+    setUploadStatus('uploading');
+    setUploadError('');
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch('/api/icons/upload', { method: 'POST', body: form });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Upload failed');
+      const shortId: string = json.iconParam; // e.g. ico_a1b2c3d4
+      set('icon', shortId);
+      setUploadedFileName(file.name);
+      setUploadedShortId(shortId);
+      setUploadStatus('done');
+    } catch (err: any) {
+      setUploadStatus('error');
+      setUploadError(err.message || 'Upload failed');
     }
+  }, []);
+
+  const processUploadedFile = (file: File) => {
+    uploadFileToServer(file);
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) processUploadedFile(file);
+    // Reset value so same file can be re-uploaded
+    e.target.value = '';
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -477,43 +468,57 @@ export default function BadgeCustomizer({ options, onChange }: Props) {
 
                 <div
                   className={`upload-dropzone${isDragging ? ' dragover' : ''}`}
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => uploadStatus !== 'uploading' && fileInputRef.current?.click()}
                   onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
                   onDragLeave={() => setIsDragging(false)}
                   onDrop={handleDrop}
                   id="logo-upload-dropzone"
+                  style={{ cursor: uploadStatus === 'uploading' ? 'wait' : undefined }}
                 >
                   <div className="upload-icon-circle">
-                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
-                    </svg>
+                    {uploadStatus === 'uploading' ? (
+                      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: 'spin 1s linear infinite' }}>
+                        <circle cx="12" cy="12" r="10" strokeOpacity="0.3" />
+                        <path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round" />
+                      </svg>
+                    ) : (
+                      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+                      </svg>
+                    )}
                   </div>
                   <div>
                     <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--text-primary)' }}>
-                      Click to upload or drag & drop
+                      {uploadStatus === 'uploading' ? 'Uploading…' : 'Click to upload or drag & drop'}
                     </div>
                     <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', marginTop: '2px' }}>
-                      PNG, SVG, JPG, WebP (auto-optimized)
+                      PNG, SVG, JPG, WebP · max 512 KB · stored on server
                     </div>
                   </div>
                 </div>
 
-                {options.icon && options.icon.startsWith('data:') && (
+                {uploadStatus === 'error' && (
+                  <div style={{ marginTop: '8px', padding: '8px 10px', background: 'rgba(239,68,68,0.1)', borderRadius: '6px', fontSize: '12px', color: '#f87171' }}>
+                    ⚠ {uploadError}
+                  </div>
+                )}
+
+                {uploadedShortId && options.icon === uploadedShortId && (
                   <div className="uploaded-logo-card">
                     <div className="uploaded-logo-thumb">
-                      <img src={options.icon} alt="Custom logo" />
+                      <img src={`/api/icons/${uploadedShortId}`} alt="Custom logo" />
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div className="truncate" style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--text-primary)' }}>
                         {uploadedFileName || 'Custom Logo'}
                       </div>
                       <div style={{ fontSize: '10px', color: '#4ade80', marginTop: '1px' }}>
-                        ✓ Embedded into SVG
+                        ✓ Stored on server · short ID: <code style={{ fontSize: '10px' }}>{uploadedShortId}</code>
                       </div>
                     </div>
                     <button
                       className="btn btn-ghost btn-xs"
-                      onClick={() => { set('icon', undefined); setUploadedFileName(''); }}
+                      onClick={() => { set('icon', undefined); setUploadedFileName(''); setUploadedShortId(null); setUploadStatus('idle'); }}
                       style={{ color: '#ef4444' }}
                       title="Remove uploaded logo"
                     >
@@ -558,7 +563,7 @@ export default function BadgeCustomizer({ options, onChange }: Props) {
             {/* COMMON ICON CONTROLS (Position, Size, Color) */}
             {options.icon && (
               <>
-                {!options.icon.startsWith('data:') && !options.icon.startsWith('http') && (
+                {!options.icon.startsWith('data:') && !options.icon.startsWith('http') && !options.icon.startsWith('ico_') && (
                   <div>
                     <span className="section-label">Icon Color</span>
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '8px' }}>

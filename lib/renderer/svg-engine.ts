@@ -40,9 +40,18 @@ export function renderBadge(options: BadgeOptions): RenderedBadgeResult {
   const gap = 4;
   const letterSpacing = options.letterSpacing || 0;
 
-  // Icon handling (Built-in SVG or Custom Uploaded PNG / SVG Data URI or Image URL)
+  // Icon handling (Built-in SVG or Custom Uploaded PNG / SVG Data URI or Image URL or Short ID)
   const rawIcon = options.icon ? options.icon.trim() : '';
-  const isDataUriOrUrl = rawIcon.startsWith('data:image/') || rawIcon.startsWith('http://') || rawIcon.startsWith('https://');
+  const isShortId = rawIcon.startsWith('ico_');
+  // Short IDs are resolved to an absolute URL at request time (served via /api/icons/[id])
+  const defaultBase = typeof window !== 'undefined' ? window.location.origin : 'https://hyggshi-badge.vercel.app';
+  const resolvedIconUrl = isShortId
+    ? `${options._iconBaseUrl || defaultBase}/api/icons/${rawIcon}`
+    : rawIcon;
+
+  const isDataUriOrUrl = isShortId
+    || resolvedIconUrl.startsWith('data:image/')
+    || resolvedIconUrl.startsWith('http://') || resolvedIconUrl.startsWith('https://');
   const isInlineSvg = rawIcon.startsWith('<svg') || rawIcon.startsWith('<?xml');
   const iconData = (!isDataUriOrUrl && !isInlineSvg) ? getIcon(rawIcon) : null;
   const hasIcon = Boolean(isDataUriOrUrl || isInlineSvg || iconData);
@@ -263,7 +272,8 @@ export function renderBadge(options: BadgeOptions): RenderedBadgeResult {
     const iX = options.iconPosition === 'right' ? totalWidth - paddingX - iconWidth : iconX;
     svg += `<g transform="translate(${iX}, ${iconY})">`;
     if (isDataUriOrUrl) {
-      svg += `<image href="${rawIcon}" xlink:href="${rawIcon}" width="${iconWidth}" height="${iconWidth}" preserveAspectRatio="xMidYMid meet" />`;
+      const imgSrc = isShortId ? resolvedIconUrl : rawIcon;
+      svg += `<image href="${imgSrc}" xlink:href="${imgSrc}" width="${iconWidth}" height="${iconWidth}" preserveAspectRatio="xMidYMid meet" />`;
     } else if (isInlineSvg) {
       const cleanedSvg = rawIcon.replace(/<\?xml.*?\?>/gi, '').trim();
       svg += `<svg width="${iconWidth}" height="${iconWidth}" viewBox="0 0 24 24" preserveAspectRatio="xMidYMid meet">${cleanedSvg.replace(/<svg[^>]*>|<\/svg>/gi, '')}</svg>`;

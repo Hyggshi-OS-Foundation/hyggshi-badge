@@ -101,6 +101,20 @@ Your server returns:
 GET /api/endpoint?url=https://example.com/badge-status.json
 ```
 
+### Custom Icon / Logo Upload
+Upload your own logo (PNG, SVG, JPG, WebP) and use the returned short ID in your badge URL:
+```bash
+# Upload via multipart form data:
+curl -X POST https://hyggshi-badge.vercel.app/api/icons/upload \
+  -F "file=@/path/to/my-logo.png"
+
+# Response:
+# { "id": "ico_a1b2c3d4", "mimeType": "image/png", "iconParam": "ico_a1b2c3d4" }
+
+# Use in Badge URL (clean and compact):
+# https://hyggshi-badge.vercel.app/api/badge?label=tool&message=ready&icon=ico_a1b2c3d4
+```
+
 ---
 
 ## 🛠 Local Development
@@ -129,29 +143,33 @@ hyggshi-badge/
 ├── app/
 │   ├── api/
 │   │   ├── badge/          Static & slug badge routes
+│   │   ├── icons/          Icon upload & serve routes (short IDs)
 │   │   ├── github/         GitHub data badges
 │   │   ├── npm/            npm package badges
 │   │   ├── dynamic/        Dynamic JSON badge
 │   │   └── endpoint/       Custom JSON endpoint
-│   ├── globals.css          Design system
+│   ├── globals.css          Design system (Vanilla CSS)
 │   ├── studio.css           Studio UI CSS
 │   ├── layout.tsx           Root layout
 │   └── page.tsx             Badge Studio app
 │
 ├── components/
 │   ├── BadgePreview.tsx     Live preview canvas
-│   ├── BadgeCustomizer.tsx  4-tab badge editor
+│   ├── BadgeCustomizer.tsx  4-tab badge editor (Presets, Upload Logo, Image URL)
 │   ├── TemplateGallery.tsx  Pre-built templates
 │   ├── ApiPlayground.tsx    Interactive API docs
-│   └── CodeExportModal.tsx  Export Markdown/HTML/SVG
+│   └── CodeExportModal.tsx  Export Markdown/HTML/SVG/React
 │
-└── lib/renderer/
-    ├── types.ts             TypeScript interfaces
-    ├── text-metrics.ts      Accurate SVG text measurement
-    ├── icons.ts             40+ built-in SVG icons
-    ├── themes.ts            Theme definitions & shape paths
-    ├── svg-engine.ts        Core SVG badge renderer
-    └── query-parser.ts      URL query parameter parser
+├── lib/
+│   ├── renderer/
+│   │   ├── types.ts         TypeScript interfaces
+│   │   ├── text-metrics.ts  Accurate SVG text measurement
+│   │   ├── icons.ts         40+ built-in SVG icons
+│   │   ├── themes.ts        Theme definitions & shape paths
+│   │   ├── svg-engine.ts    Core SVG badge renderer
+│   │   └── query-parser.ts  URL query parameter parser
+│   └── storage/
+│       └── icon-store.ts    Short ID generation, in-memory & disk caching
 ```
 
 ---

@@ -59,6 +59,8 @@ export interface BadgeOptions {
     to: string;
     angle?: number;
   };
+  /** Internal: base URL for resolving ico_ short IDs (injected by API route, not user-facing) */
+  _iconBaseUrl?: string;
 }
 
 export interface RenderedBadgeResult {

@@ -2,14 +2,19 @@ import { NextRequest } from 'next/server';
 import { renderBadge } from '@/lib/renderer/svg-engine';
 import { parseBadgeQuery, createSvgResponse } from '@/lib/renderer/query-parser';
 
-export const runtime = 'edge';
+// Use nodejs runtime so ico_ short IDs can be resolved from /tmp disk cache
+export const runtime = 'nodejs';
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
+    const url = new URL(request.url);
+    const { searchParams } = url;
     const options = parseBadgeQuery(searchParams);
-    const result = renderBadge(options);
 
+    // Inject base URL so that ico_ short IDs resolve to absolute URLs
+    options._iconBaseUrl = `${url.protocol}//${url.host}`;
+
+    const result = renderBadge(options);
     return createSvgResponse(result.svg, 200, 300);
   } catch (err: any) {
     const fallback = renderBadge({
