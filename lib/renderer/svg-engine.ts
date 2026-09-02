@@ -72,8 +72,9 @@ export function renderBadge(options: BadgeOptions): RenderedBadgeResult {
   const cornerRadius = options.cornerRadius !== undefined ? options.cornerRadius : (shape === 'pill' ? height / 2 : 4);
   const borderWidth = options.borderWidth !== undefined ? options.borderWidth : (theme.borderWidth || 0);
 
-  // Font family
-  const fontFamily = options.fontFamily || '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+  // Font family (ensure single quotes for XML attribute safety)
+  const defaultFont = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
+  const fontFamily = (options.fontFamily || defaultFont).replace(/"/g, "'");
 
   // Positions
   const textY = Math.round(height / 2 + fontSize / 3.2);

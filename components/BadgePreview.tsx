@@ -64,14 +64,20 @@ export default function BadgePreview({ options, onSizeChange }: BadgePreviewProp
       </div>
 
       <div className={`preview-canvas bg-${bg}`} id="badge-preview-canvas">
-        <img
-          src={svgDataUrl}
-          alt="Badge preview"
-          className="preview-badge-img"
-          style={{ imageRendering: 'crisp-edges' }}
-          draggable={false}
+        <div
+          dangerouslySetInnerHTML={{ __html: svg }}
+          className="preview-badge-wrapper"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            lineHeight: 0,
+            transform: 'scale(1.2)',
+            transformOrigin: 'center',
+            filter: 'drop-shadow(0 4px 20px rgba(99,102,241,0.25))'
+          }}
         />
-        <div className="preview-size-info" style={{ color: 'var(--text-muted)', fontSize: '11px', fontFamily: 'var(--font-mono)' }}>
+        <div className="preview-size-info" style={{ color: 'var(--text-muted)', fontSize: '11px', fontFamily: 'var(--font-mono)', marginTop: '8px' }}>
           {width} × {height}px
         </div>
       </div>
