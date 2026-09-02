@@ -14,10 +14,12 @@ type ExportFormat = 'markdown' | 'html' | 'url' | 'svg' | 'react';
 export default function CodeExportModal({ options, onClose }: Props) {
   const [activeFormat, setActiveFormat] = useState<ExportFormat>('markdown');
   const [copied, setCopied] = useState(false);
-  const [origin, setOrigin] = useState('https://your-app.vercel.app');
+  const [origin, setOrigin] = useState('https://hyggshi-badge.vercel.app');
 
   useEffect(() => {
-    setOrigin(window.location.origin);
+    if (typeof window !== 'undefined' && window.location.origin) {
+      setOrigin(window.location.origin);
+    }
   }, []);
 
   const { svg } = renderBadge(options);

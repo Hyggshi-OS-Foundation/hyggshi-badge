@@ -105,9 +105,16 @@ function buildUrl(options: BadgeOptions): string {
 
 function URLPreview({ options }: { options: BadgeOptions }) {
   const [copied, setCopied] = useState<string | null>(null);
+  const [origin, setOrigin] = useState('https://hyggshi-badge.vercel.app');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.origin) {
+      setOrigin(window.location.origin);
+    }
+  }, []);
 
   const url = buildUrl(options);
-  const fullUrl = `https://your-domain.vercel.app${url}`;
+  const fullUrl = `${origin}${url}`;
   const markdown = `![${options.label || 'Badge'}](${fullUrl})`;
   const html = `<img src="${fullUrl}" alt="${options.label || 'Badge'}" />`;
 
