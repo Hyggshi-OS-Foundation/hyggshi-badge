@@ -3,6 +3,12 @@ import { renderBadge } from '@/lib/renderer/svg-engine';
 import { parseBadgeQuery, createSvgResponse } from '@/lib/renderer/query-parser';
 import { formatCompactNumber } from '@/lib/renderer/text-metrics';
 
+/** Ensure version string always starts with "v" */
+const ensureV = (tag: string | undefined | null): string => {
+  if (!tag || tag === 'none') return 'none';
+  return tag.startsWith('v') ? tag : 'v' + tag;
+};
+
 export const runtime = 'edge';
 
 export async function GET(
@@ -83,7 +89,7 @@ export async function GET(
       if (res.ok) {
         const data = await res.json();
         label = label || 'release';
-        message = data.tag_name || data.name || 'none';
+        message = ensureV(data.tag_name || data.name);
         color = queryOptions.color || '#3b82f6';
       } else {
         // Fallback to tags
@@ -91,7 +97,7 @@ export async function GET(
         if (!tagsRes.ok) throw new Error('No release or tag found');
         const tags = await tagsRes.json();
         label = label || (type === 'tag' ? 'tag' : 'release');
-        message = tags[0]?.name || 'none';
+        message = ensureV(tags[0]?.name);
         color = queryOptions.color || '#3b82f6';
       }
     } else if (type === 'downloads' || type === 'releases' || type === 'prerelease' || type === 'pre-release' || type === 'latest-prerelease') {
@@ -126,7 +132,7 @@ export async function GET(
       } else if (type === 'latest-prerelease') {
         const latestPre = releases.find((r: any) => r.prerelease && !r.draft);
         label = label || 'pre-release';
-        message = latestPre ? (latestPre.tag_name || latestPre.name || 'none') : 'none';
+        message = latestPre ? ensureV(latestPre.tag_name || latestPre.name) : 'none';
         icon = queryOptions.icon || 'github';
         color = queryOptions.color || '#f59e0b';
       }
