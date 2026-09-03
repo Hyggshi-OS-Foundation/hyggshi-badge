@@ -119,8 +119,9 @@ export async function GET(
         color = queryOptions.color || '#007ec6';
       } else if (type === 'releases') {
         const stableReleases = releases.filter((r: any) => !r.prerelease && !r.draft);
-        label = label || 'releases';
-        message = `${stableReleases.length} stable`;
+        const latestStable = stableReleases[0];
+        label = label || 'release';
+        message = latestStable ? `${ensureV(latestStable.tag_name || latestStable.name)} stable` : 'none';
         icon = queryOptions.icon || 'github';
         color = queryOptions.color || '#22c55e';
       } else if (type === 'prerelease' || type === 'pre-release') {
