@@ -445,7 +445,11 @@ export default function BadgeCustomizer({ options, onChange }: Props) {
                       title={name}
                     >
                       <svg viewBox={iconData.viewBox || '0 0 24 24'} width="16" height="16">
-                        <path d={iconData.path} fill="currentColor" />
+                        {iconData.svgContent ? (
+                          <g dangerouslySetInnerHTML={{ __html: iconData.svgContent }} />
+                        ) : (
+                          <path d={iconData.path} fill="currentColor" />
+                        )}
                       </svg>
                       <span>{name}</span>
                     </button>

@@ -278,8 +278,12 @@ export function renderBadge(options: BadgeOptions): RenderedBadgeResult {
       const cleanedSvg = rawIcon.replace(/<\?xml.*?\?>/gi, '').trim();
       svg += `<svg width="${iconWidth}" height="${iconWidth}" viewBox="0 0 24 24" preserveAspectRatio="xMidYMid meet">${cleanedSvg.replace(/<svg[^>]*>|<\/svg>/gi, '')}</svg>`;
     } else if (iconData) {
-      svg += `<svg viewBox="${iconData.viewBox || '0 0 24 24'}" width="${iconWidth}" height="${iconWidth}">`;
-      svg += `<path d="${iconData.path}" fill="${iconColor}" />`;
+      svg += `<svg viewBox="${iconData.viewBox || '0 0 24 24'}" width="${iconWidth}" height="${iconWidth}" preserveAspectRatio="xMidYMid meet">`;
+      if (iconData.svgContent) {
+        svg += iconData.svgContent;
+      } else if (iconData.path) {
+        svg += `<path d="${iconData.path}" fill="${iconColor}" />`;
+      }
       svg += `</svg>`;
     }
     svg += `</g>`;
