@@ -5,7 +5,8 @@
   "description": "Custom high-aesthetic badge generator & serverless Shields.io alternative with modern SVG themes",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "generate:icons": "node scripts/generate-resource-icons.mjs",
+    "build": "npm run generate:icons && next build",
     "start": "next start",
     "lint": "next lint",
     "deploy": "vercel --prod"

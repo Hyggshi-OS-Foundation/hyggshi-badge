@@ -47,11 +47,6 @@ export const ICONS: Record<string, IconData> = {
     path: 'M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z',
     defaultColor: '#eab308'
   },
-  gitfork: {
-    viewBox: '0 0 24 24',
-    path: 'M6 2a3 3 0 0 0-3 3c0 1.3.84 2.4 2 2.82v4.36A3 3 0 0 0 7 15h2a3 3 0 0 0 2-2.18V8.82c1.16-.42 2-1.52 2-2.82a3 3 0 0 0-3-3 3 3 0 0 0-2.82 2H7.82A3 3 0 0 0 6 2zm12 10a3 3 0 0 0-3 3c0 1.3.84 2.4 2 2.82V20a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-1.18c1.16-.42 2-1.52 2-2.82a3 3 0 0 0-6 0c0 1.3.84 2.4 2 2.82V20a4 4 0 0 0 4 4h4a4 4 0 0 0 4-4v-.18c1.16-.42 2-1.52 2-2.82a3 3 0 0 0-3-3z',
-    defaultColor: '#ffffff'
-  },
   check: {
     viewBox: '0 0 24 24',
     path: 'M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z',
@@ -130,7 +125,18 @@ export function getIcon(iconName?: string): IconData | null {
     qtframework: 'qt',
     kotlinlang: 'kotlin',
     gulp4: 'gulp',
-    nexcode: 'nexcode'
+    nexcode: 'nexcode',
+    // 20 additional resource icons
+    cloudflareicon: 'cloudflare',
+    cf: 'cloudflare',
+    netlifyicon: 'netlify',
+    chrome: 'chromium',
+    gl: 'opengl',
+    pip: 'pypi',
+    tf: 'tensorflow',
+    googlev8: 'v8',
+    gitfork: 'gitfork'
+
   };
 
   const resolved = aliasMap[clean] || clean;
