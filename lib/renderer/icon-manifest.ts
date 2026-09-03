@@ -60,4 +60,5 @@ export const ICON_MANIFEST: Record<string, string> = {
   windows: "./Resources/microsoft-windows-icon.svg",
   yarn: "./Resources/yarn.svg",
   gitfork: "./Resources/git-fork.svg",
+  debian: "./Resources/debian.svg",
 };

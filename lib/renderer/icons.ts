@@ -135,7 +135,8 @@ export function getIcon(iconName?: string): IconData | null {
     pip: 'pypi',
     tf: 'tensorflow',
     googlev8: 'v8',
-    gitfork: 'gitfork'
+    gitfork: 'gitfork',
+    debian: 'debian',
 
   };
 
