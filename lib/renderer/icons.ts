@@ -174,7 +174,8 @@ export function getIcon(iconName?: string): IconData | null {
     blender3d: 'blender',
     qtframework: 'qt',
     kotlinlang: 'kotlin',
-    gulp4: 'gulp'
+    gulp4: 'gulp',
+    nexcode: 'nexcode'
   };
 
   const resolved = aliasMap[clean] || clean;
