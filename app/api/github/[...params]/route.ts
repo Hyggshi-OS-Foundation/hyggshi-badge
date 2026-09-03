@@ -37,7 +37,7 @@ export async function GET(
     let color = queryOptions.color || '#22c55e';
     let icon = queryOptions.icon || 'github';
 
-    if (type === 'stars' || type === 'forks' || type === 'issues' || type === 'license') {
+    if (type === 'stars' || type === 'forks' || type === 'issues' || type === 'license' || type === 'pulls') {
       if (!repo) throw new Error('missing repository name');
       const res = await fetch(`https://api.github.com/repos/${owner}/${repo}`, { headers, next: { revalidate: 300 } });
       if (!res.ok) throw new Error(`GitHub API: ${res.status}`);
@@ -62,6 +62,20 @@ export async function GET(
         label = label || 'license';
         message = data.license?.spdx_id || data.license?.name || 'none';
         color = queryOptions.color || '#3b82f6';
+      } else if (type === 'pulls') {
+        label = label || 'pull requests';
+        // open_issues_count includes PRs; fetch PRs directly
+        const prRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls?state=open&per_page=1`, { headers, next: { revalidate: 300 } });
+        const linkHeader = prRes.headers.get('Link') || '';
+        let prCount = 0;
+        if (prRes.ok) {
+          const prData = await prRes.json();
+          const lastMatch = linkHeader.match(/page=(\d+)>; rel="last"/);
+          prCount = lastMatch ? parseInt(lastMatch[1], 10) : prData.length;
+        }
+        message = `${prCount} open`;
+        icon = queryOptions.icon || 'github';
+        color = prCount > 0 ? '#007ec6' : '#22c55e';
       }
     } else if (type === 'release' || type === 'tag') {
       if (!repo) throw new Error('missing repository name');
@@ -80,6 +94,21 @@ export async function GET(
         message = tags[0]?.name || 'none';
         color = queryOptions.color || '#3b82f6';
       }
+    } else if (type === 'downloads') {
+      if (!repo) throw new Error('missing repository name');
+      const relRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/releases`, { headers, next: { revalidate: 300 } });
+      if (!relRes.ok) throw new Error(`GitHub API: ${relRes.status}`);
+      const releases = await relRes.json();
+      let totalDownloads = 0;
+      for (const rel of releases) {
+        for (const asset of rel.assets || []) {
+          totalDownloads += asset.download_count || 0;
+        }
+      }
+      label = label || 'downloads';
+      message = formatCompactNumber(totalDownloads);
+      icon = queryOptions.icon || 'github';
+      color = queryOptions.color || '#007ec6';
     } else if (type === 'workflow' || type === 'actions') {
       const workflowName = segments[3];
       if (!repo || !workflowName) throw new Error('Usage: /api/github/workflow/:owner/:repo/:workflowName');
