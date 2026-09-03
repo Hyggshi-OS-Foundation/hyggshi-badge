@@ -94,21 +94,42 @@ export async function GET(
         message = tags[0]?.name || 'none';
         color = queryOptions.color || '#3b82f6';
       }
-    } else if (type === 'downloads') {
+    } else if (type === 'downloads' || type === 'releases' || type === 'prerelease' || type === 'pre-release' || type === 'latest-prerelease') {
       if (!repo) throw new Error('missing repository name');
       const relRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/releases`, { headers, next: { revalidate: 300 } });
       if (!relRes.ok) throw new Error(`GitHub API: ${relRes.status}`);
       const releases = await relRes.json();
-      let totalDownloads = 0;
-      for (const rel of releases) {
-        for (const asset of rel.assets || []) {
-          totalDownloads += asset.download_count || 0;
+
+      if (type === 'downloads') {
+        let totalDownloads = 0;
+        for (const rel of releases) {
+          for (const asset of rel.assets || []) {
+            totalDownloads += asset.download_count || 0;
+          }
         }
+        label = label || 'downloads';
+        message = formatCompactNumber(totalDownloads);
+        icon = queryOptions.icon || 'github';
+        color = queryOptions.color || '#007ec6';
+      } else if (type === 'releases') {
+        const stableReleases = releases.filter((r: any) => !r.prerelease && !r.draft);
+        label = label || 'releases';
+        message = `${stableReleases.length} stable`;
+        icon = queryOptions.icon || 'github';
+        color = queryOptions.color || '#22c55e';
+      } else if (type === 'prerelease' || type === 'pre-release') {
+        const preReleases = releases.filter((r: any) => r.prerelease && !r.draft);
+        label = label || 'pre-releases';
+        message = `${preReleases.length}`;
+        icon = queryOptions.icon || 'github';
+        color = queryOptions.color || '#f59e0b';
+      } else if (type === 'latest-prerelease') {
+        const latestPre = releases.find((r: any) => r.prerelease && !r.draft);
+        label = label || 'pre-release';
+        message = latestPre ? (latestPre.tag_name || latestPre.name || 'none') : 'none';
+        icon = queryOptions.icon || 'github';
+        color = queryOptions.color || '#f59e0b';
       }
-      label = label || 'downloads';
-      message = formatCompactNumber(totalDownloads);
-      icon = queryOptions.icon || 'github';
-      color = queryOptions.color || '#007ec6';
     } else if (type === 'workflow' || type === 'actions') {
       const workflowName = segments[3];
       if (!repo || !workflowName) throw new Error('Usage: /api/github/workflow/:owner/:repo/:workflowName');
