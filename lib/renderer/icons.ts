@@ -137,7 +137,7 @@ export function getIcon(iconName?: string): IconData | null {
     googlev8: 'v8',
     gitfork: 'gitfork',
     debian: 'debian',
-
+    tux: 'linux',
   };
 
   const resolved = aliasMap[clean] || clean;

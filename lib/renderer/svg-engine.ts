@@ -280,7 +280,11 @@ export function renderBadge(options: BadgeOptions): RenderedBadgeResult {
     } else if (iconData) {
       svg += `<svg viewBox="${iconData.viewBox || '0 0 24 24'}" width="${iconWidth}" height="${iconWidth}" preserveAspectRatio="xMidYMid meet">`;
       if (iconData.svgContent) {
-        svg += iconData.svgContent;
+        if (options.iconColor) {
+          svg += iconData.svgContent.replace(/fill="(#[0-9a-fA-F]{3,8})"/gi, `fill="${iconColor}"`);
+        } else {
+          svg += iconData.svgContent;
+        }
       } else if (iconData.path) {
         svg += `<path d="${iconData.path}" fill="${iconColor}" />`;
       }
